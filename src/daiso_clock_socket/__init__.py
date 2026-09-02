@@ -13,12 +13,24 @@ class Param(BuildParam):
     frame_thickness: float = Field(2.0, description="前面フレームの厚み (mm)")
     frame_lip: float = Field(3.0, description="前面フレームが時計に被さる幅 (mm)")
     fillet: float = Field(1.0, description="外周の縦エッジのフィレット半径 (mm)")
+    hook: bool = Field(False, description="背面上部にフックを付ける (要サポート印刷)")
+    hook_gap: float = Field(6.0, description="フックと背面の隙間 (mm)")
+    hook_length: float = Field(30.0, description="フックの本体上端からの長さ (mm)")
+    hook_thickness: float = Field(3.0, description="フックの厚み (mm)")
+    hook_width: float | None = Field(
+        None, description="フックの幅 (mm)。未指定なら本体の全幅 - 20mm"
+    )
+    hook_fillet: float = Field(
+        1.0,
+        description="フックの付け根・角のフィレット半径 (mm)。hook_thickness の半分未満にする",
+    )
 
     @property
     def filename(self) -> str:
+        hook = "-hook" if self.hook else ""
         return (
             f"v{ver()}-{self.clock_width}w{self.holder_height}h"
-            f"{self.clock_depth}d{self.frame_lip}l.stl"
+            f"{self.clock_depth}d{self.frame_lip}l{hook}.stl"
         )
 
 
@@ -55,6 +67,38 @@ def build(param: Param) -> cq.Workplane:
 
     if param.fillet > 0:
         result = result.edges("|Z and (<X or >X)").fillet(param.fillet)
+
+    if param.hook:
+        # 背面上端から後方へ渡って垂れ下がる逆 L 字 (横から見て ┐ 形)
+        hook_w = param.hook_width if param.hook_width is not None else outer_w - 20
+        y0 = outer_d / 2
+        t = param.hook_thickness
+        hook = (
+            cq.Workplane("YZ")
+            .polyline(
+                [
+                    (y0, total_h),
+                    (y0 + param.hook_gap + t, total_h),
+                    (y0 + param.hook_gap + t, total_h - param.hook_length),
+                    (y0 + param.hook_gap, total_h - param.hook_length),
+                    (y0 + param.hook_gap, total_h - t),
+                    (y0, total_h - t),
+                ]
+            )
+            .close()
+            .extrude(hook_w / 2, both=True)
+        )
+        if param.hook_fillet > 0:
+            # 背面に接する 2 角 (<Y) 以外のプロファイル角を丸める
+            hook = hook.edges("|X and (not <Y)").fillet(param.hook_fillet)
+        result = result.union(hook)
+        if param.hook_fillet > 0:
+            # 付け根 (背面との接合部) の凹エッジを丸める
+            root = cq.selectors.BoxSelector(
+                (-hook_w / 2 - 1, y0 - 0.5, total_h - t - 0.5),
+                (hook_w / 2 + 1, y0 + 0.5, total_h + 0.5),
+            )
+            result = result.edges(root).fillet(param.hook_fillet)
 
     return result
 
