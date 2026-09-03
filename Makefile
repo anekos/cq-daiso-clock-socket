@@ -1,6 +1,6 @@
 .PHONY: interactive
 interactive:
-	uv run app -- interactive
+	uv run app -- interactive --inline-show
 
 .PHONY: build
 build:
