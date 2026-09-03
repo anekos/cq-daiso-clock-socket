@@ -14,7 +14,7 @@ class Param(BuildParam):
     frame_lip: float = Field(3.0, description="前面フレームが時計に被さる幅 (mm)")
     fillet: float = Field(1.0, description="外周の縦エッジのフィレット半径 (mm)")
     hook: bool = Field(False, description="背面上部にフックを付ける (要サポート印刷)")
-    hook_gap: float = Field(6.0, description="フックと背面の隙間 (mm)")
+    hook_gap: float = Field(7.0, description="フックと背面の隙間 (mm)")
     hook_length: float = Field(30.0, description="フックの本体上端からの長さ (mm)")
     hook_thickness: float = Field(3.0, description="フックの厚み (mm)")
     hook_width: float | None = Field(
